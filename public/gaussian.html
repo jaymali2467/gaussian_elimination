@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>Gaussian Elimination (Python via Pyodide)</title>
+    <style>
+      :root {
+        --bg: #0b0c0f;
+        --surface: #12141a;
+        --card: #191c24;
+        --text: #eef2f8;
+        --muted: #a9b1bd;
+        --brand: #2ea8ff;
+        --accent: #ffb86b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      }
+      header {
+        text-align: center;
+        padding: 28px 16px 10px;
+      }
+      h1 { font-size: 22px; margin: 0 0 6px; }
+      p.lead { color: var(--muted); margin: 0; }
+      main {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .panel {
+        background: var(--card);
+        border: 1px solid #232732;
+        border-radius: 10px;
+        padding: 14px;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      label { font-weight: 600; }
+      input[type="number"] {
+        height: 36px; padding: 0 10px;
+        border-radius: 8px; border: 1px solid #2a2f3b;
+        background: var(--surface); color: var(--text);
+        width: 96px;
+      }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        height: 36px; padding: 0 14px; border-radius: 8px;
+        border: 1px solid transparent; cursor: pointer;
+        font-weight: 600; font-size: 14px;
+      }
+      .btn-primary { background: var(--brand); color: #001524; }
+      .btn-secondary { background: #2a2f3b; color: var(--text); }
+      .grids { display: grid; gap: 16px; }
+      @media (min-width: 860px) {
+        .grids { grid-template-columns: 1fr auto 240px; align-items: start; }
+      }
+      .gridA, .gridB { display: grid; gap: 8px; }
+      .card-title { font-weight: 600; margin: 0 0 8px; }
+      .muted { color: var(--muted); }
+      pre {
+        background: #0f1116; border: 1px solid #232732; border-radius: 10px;
+        padding: 12px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 13px; line-height: 1.6;
+      }
+      .separator { display: none; }
+      @media (min-width: 860px) {
+        .separator { display: flex; align-items: center; justify-content: center; font-weight: 700; }
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1>welcome to jay's website for gaussian elimination with row pivoting and scaling</h1>
+      <p class="lead">Select the dimension of your square matrix, enter A (n×n) and B (n×1) as floats, then solve. Output is printed exactly like NumPy.</p>
+    </header>
+
+    <main>
+      <section class="panel">
+        <div class="row">
+          <label for="dim">Dimension n</label>
+          <input id="dim" type="number" min="1" max="10" step="1" value="3" />
+          <button id="applyN" class="btn btn-secondary">Apply n</button>
+          <span class="muted">A is n×n, B is n×1</span>
+        </div>
+      </section>
+
+      <section class="grids">
+        <div class="panel">
+          <h3 class="card-title">Matrix A (n×n)</h3>
+          <div id="gridA" class="gridA"></div>
+        </div>
+
+        <div class="separator">×</div>
+
+        <div class="panel">
+          <h3 class="card-title">Vector B (n×1)</h3>
+          <div id="gridB" class="gridB"></div>
+        </div>
+      </section>
+
+      <section class="row">
+        <button id="solve" class="btn btn-primary">Solve</button>
+        <button id="clear" class="btn btn-secondary">Clear Output</button>
+        <span id="status" class="muted" aria-live="polite"></span>
+      </section>
+
+      <section class="panel">
+        <h3 class="card-title">Output</h3>
+        <pre id="out">Results will appear here...</pre>
+      </section>
+
+      <section class="panel">
+        <h4 class="card-title">Reference formatting</h4>
+        <img
+          alt="Example of the desired printed matrices after scaling and row pivoting, and the final B vector formatting."
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-OwesdaBPnp0tvFhhUofk16veBgb0Ug.png"
+          style="max-width: 100%; border-radius: 8px; border: 1px solid #232732;"
+        />
+      </section>
+    </main>
+
+    <script>
+      // Dynamic matrix builders (no sliders, only float inputs)
+      const dimInput = document.getElementById('dim');
+      const applyNBtn = document.getElementById('applyN');
+      const gridA = document.getElementById('gridA');
+      const gridB = document.getElementById('gridB');
+      const outEl = document.getElementById('out');
+      const statusEl = document.getElementById('status');
+
+      function buildGrids(n) {
+        // Build A (n×n)
+        gridA.innerHTML = '';
+        gridA.style.gridTemplateColumns = `repeat(${n}, minmax(70px, 1fr))`;
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            const inp = document.createElement('input');
+            inp.type = 'number';
+            inp.step = 'any';
+            inp.value = '0';
+            inp.setAttribute('aria-label', `A[${i+1},${j+1}]`);
+            gridA.appendChild(inp);
+          }
+        }
+        // Build B (n×1)
+        gridB.innerHTML = '';
+        gridB.style.gridTemplateColumns = `repeat(1, minmax(120px, 1fr))`;
+        for (let i = 0; i < n; i++) {
+          const inp = document.createElement('input');
+          inp.type = 'number';
+          inp.step = 'any';
+          inp.value = '0';
+          inp.setAttribute('aria-label', `B[${i+1}]`);
+          gridB.appendChild(inp);
+        }
+      }
+
+      function readA(n) {
+        const vals = Array.from(gridA.querySelectorAll('input'));
+        const A = [];
+        let k = 0;
+        for (let i = 0; i < n; i++) {
+          const row = [];
+          for (let j = 0; j < n; j++) {
+            const v = parseFloat(vals[k++].value || '0');
+            row.push(isFinite(v) ? v : 0);
+          }
+          A.push(row);
+        }
+        return A;
+      }
+      function readB(n) {
+        const vals = Array.from(gridB.querySelectorAll('input'));
+        const B = [];
+        for (let i = 0; i < n; i++) {
+          const v = parseFloat(vals[i].value || '0');
+          B.push(isFinite(v) ? v : 0);
+        }
+        return B;
+      }
+
+      applyNBtn.addEventListener('click', () => {
+        const n = Math.max(1, Math.min(10, Math.floor(parseInt(dimInput.value || '1', 10))));
+        dimInput.value = String(n);
+        buildGrids(n);
+        outEl.textContent = 'Results will appear here...';
+      });
+
+      // Initialize defaults
+      buildGrids(parseInt(dimInput.value, 10));
+
+      // --- Pyodide + NumPy setup ---
+      let pyodideReady = null;
+
+      async function ensurePyodide() {
+        if (pyodideReady) return pyodideReady;
+
+        statusEl.textContent = 'Loading Python (Pyodide) and NumPy...';
+
+        // Wait for the global loadPyodide symbol (handles slow CDN)
+        if (typeof loadPyodide === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const start = Date.now();
+            (function wait() {
+              if (typeof loadPyodide !== 'undefined') return resolve();
+              if (Date.now() - start > 20000) return reject(new Error('Timed out loading Pyodide script'));
+              setTimeout(wait, 50);
+            })();
+          });
+        }
+
+        const p = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
+        await p.loadPackage('numpy');
+        statusEl.textContent = 'Python ready.';
+        pyodideReady = Promise.resolve(p);
+        return p;
+      }
+
+      // Python algorithm code (unchanged)
+      const PY_CODE = `
+import numpy as np
+import sys, io, contextlib
+
+def gauss_elimination(A, B):
+    n = A.shape[0]
+    for i in range(n):
+        for j in range(n):
+            row_max = np.max(A[j]) if A[j].size else 1.0
+            if row_max == 0:
+                row_max = 1.0
+            A[j] = A[j] / row_max
+            B[j] = B[j] / row_max
+
+        print("\\nAfter Scaling A: ")
+        print(A)
+        print("\\nAfter Scaling B: ")
+        print(B)
+
+        # forward elimination for column i (no explicit row swaps, same as your code)
+        for k in range(i+1, n):
+            pivot = A[i, i]
+            x = 0.0 if pivot == 0 else A[k, i] / pivot
+            A[k] = A[k] - x * A[i]
+            B[k] = B[k] - x * B[i]
+
+        print("\\nAfter Row pivoting A:")
+        print(A)
+        print("\\nB: ")
+        print(B)
+
+    # back substitution (uses n rather than a fixed 5)
+    X = np.zeros(n, dtype=np.float64)
+    for i in range(n):
+        subs = 0.0
+        for k in range(i):
+            subs += A[n-i-1, n-k-1] * X[n-k-1]
+        # divide by diagonal to get accurate solution
+        diag = A[n-1-i, n-1-i]
+        rhs = B[n-1-i] - subs
+        X[n-1-i] = np.nan if diag == 0 else rhs / diag
+
+    print("\\nFinal Solutions by back substition X:\\n")
+    print(X)
+
+def run(A_in, B_in):
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        A = np.array(A_in, dtype=np.float64)
+        B = np.array(B_in, dtype=np.float64)
+        gauss_elimination(A, B)
+    return buf.getvalue()
+`;
+
+      async function solve() {
+        const n = Math.max(1, Math.min(10, Math.floor(parseInt(dimInput.value || '1', 10))));
+        const A = readA(n);
+        const B = readB(n);
+        outEl.textContent = '';
+        statusEl.textContent = 'Solving...';
+
+        try {
+          const py = await ensurePyodide();
+
+          // Load Python code once (idempotent)
+          if (!py.__gauss_loaded__) {
+            py.runPython(PY_CODE);
+            py.__gauss_loaded__ = true;
+          }
+
+          const Apy = py.toPy(A);
+          const Bpy = py.toPy(B);
+          py.globals.set('A_in', Apy);
+          py.globals.set('B_in', Bpy);
+
+          const result = py.runPython(`run(A_in, B_in)`);
+          outEl.textContent = String(result || '');
+          statusEl.textContent = 'Done.';
+        } catch (err) {
+          outEl.textContent = 'Error: ' + (err && err.message ? err.message : String(err));
+          statusEl.textContent = 'Error.';
+        }
+      }
+
+      document.getElementById('solve').addEventListener('click', solve);
+      document.getElementById('clear').addEventListener('click', () => {
+        outEl.textContent = 'Results will appear here...';
+      });
+    </script>
+  </body>
+</html>
