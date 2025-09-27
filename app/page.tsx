@@ -4,9 +4,10 @@ export default function Page() {
       <section className="mx-auto max-w-3xl px-6 py-10 flex flex-col gap-6">
         <header className="text-center">
           <h1 className="text-3xl font-semibold text-balance">
-            {"welcome to jay's website for gaussian elimination with row pivoting and scaling"}
+            {"Welcome to Jay's website for Gaussian Elimination with row pivoting and scaling"}
           </h1>
           <p className="text-muted-foreground mt-2">
+            Using this, you can directly give your page and copy all the matrices in the assignments, hehe
             Open the Python-powered page, choose dimension n, enter A (n×n) and B (n×1) as floats, then view every step
             printed like your NumPy output.
           </p>
