@@ -9,7 +9,7 @@ export default function Page() {
           <p className="text-muted-foreground mt-2">
             Using this, you can directly give your matrix and copy all the matrices in the assignments, hehe
             Open the Python-powered page, choose dimension n, enter A (n×n) and B (n×1) as floats, then view every step
-            printed like your NumPy output.
+            printed like your Assignment answer.
           </p>
         </header>
 
