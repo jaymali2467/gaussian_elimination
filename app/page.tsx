@@ -4,7 +4,7 @@ export default function Page() {
       <section className="mx-auto max-w-3xl px-6 py-10 flex flex-col gap-6">
         <header className="text-center">
           <h1 className="text-3xl font-semibold text-balance">
-            {"Welcome to Jay's website for Gaussian Elimination with row pivoting and scaling"}
+            {"Welcome to Jay's website for Gaussian Elimination with scaling"}
           </h1>
           <p className="text-muted-foreground mt-2">
             Using this, you can directly give your matrix and copy all the matrices in the assignments, hehe
