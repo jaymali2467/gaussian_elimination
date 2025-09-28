@@ -259,9 +259,9 @@ def gauss_elimination(A, B):
             A[k] = A[k] - x * A[i]
             B[k] = B[k] - x * B[i]
 
-        print("\\nAfter Row pivoting A:")
+        print("\\nAfter Row - Elimination A:")
         print(A)
-        print("\\nB: ")
+        print("\\nAfter Row - Elimination B: ")
         print(B)
 
     # back substitution (uses n rather than a fixed 5)
@@ -270,7 +270,7 @@ def gauss_elimination(A, B):
         subs = 0.0
         for k in range(i):
             subs += A[n-i-1, n-k-1] * X[n-k-1]
-        # divide by diagonal to get accurate solution
+        # divide by diagonal to get an accurate solution
         diag = A[n-1-i, n-1-i]
         rhs = B[n-1-i] - subs
         X[n-1-i] = np.nan if diag == 0 else rhs / diag
